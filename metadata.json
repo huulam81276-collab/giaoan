@@ -1,0 +1,5 @@
+{
+  "name": "Soạn Kế Hoạch Bài Dạy",
+  "description": "Một ứng dụng web sử dụng AI để tự động tạo kế hoạch bài giảng (giáo án) chi tiết cho giáo viên dựa trên các thông tư của Bộ Giáo dục và Đào tạo Việt Nam.",
+  "requestFramePermissions": []
+}
