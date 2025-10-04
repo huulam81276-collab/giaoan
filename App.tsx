@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { LessonPlanForm } from './components/LessonPlanForm';
 import { LessonPlanDisplay } from './components/LessonPlanDisplay';
@@ -108,16 +109,12 @@ const App: React.FC = () => {
       }
       
       try {
-        // Clean up potential markdown code fences and other text outside the main JSON object.
-        let jsonString = fullResponseText;
-        const jsonStartIndex = jsonString.indexOf('{');
-        const jsonEndIndex = jsonString.lastIndexOf('}');
+        // Since we now request application/json, the response should be a clean JSON string.
+        // We just need to trim any potential leading/trailing whitespace.
+        const jsonString = fullResponseText.trim();
 
-        if (jsonStartIndex !== -1 && jsonEndIndex > jsonStartIndex) {
-            jsonString = jsonString.substring(jsonStartIndex, jsonEndIndex + 1);
-        } else {
-            // If no JSON object is found, throw an error.
-            throw new Error("Không tìm thấy đối tượng JSON hợp lệ trong phản hồi từ AI.");
+        if (!jsonString) {
+          throw new Error("Phản hồi từ AI trống.");
         }
         
         const finalPlan: GeneratedLessonPlan = JSON.parse(jsonString);
@@ -176,7 +173,7 @@ const App: React.FC = () => {
             SOẠN KẾ HOẠCH BÀI DẠY
           </h1>
           <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
-            Tạo giáo án chuyên nghiệp theo Công văn 5512 từ hình ảnh Sách giáo khoa.
+            Tạo giáo án chuyên nghiệp theo Công văn 5512 và 2345 từ hình ảnh Sách giáo khoa.
           </p>
         </header>
 

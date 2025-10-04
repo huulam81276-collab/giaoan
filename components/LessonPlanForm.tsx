@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { LessonPlanInput } from '../types';
 import { LoadingSpinner } from './icons/LoadingSpinner';
@@ -143,6 +144,7 @@ export const LessonPlanForm: React.FC<LessonPlanFormProps> = ({
             className={inputStyles}
           >
             <option value="5512">Công văn 5512</option>
+            <option value="2345">Công văn 2345</option>
           </select>
         </div>
 
@@ -180,7 +182,7 @@ export const LessonPlanForm: React.FC<LessonPlanFormProps> = ({
              <label htmlFor="file-upload" className="relative flex flex-col items-center justify-center w-full h-48 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-colors">
                  <div className="text-center">
                       <svg className="mx-auto h-12 w-12 text-slate-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4 4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <p className="mt-2 text-sm text-slate-400">
                         <span className="font-semibold text-indigo-400">Nhấn để tải lên</span> hoặc kéo thả
