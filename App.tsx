@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { LessonPlanForm } from './components/LessonPlanForm';
 import { LessonPlanDisplay } from './components/LessonPlanDisplay';
 import { LoadingSpinner } from './components/icons/LoadingSpinner';
 import { DocumentPlusIcon } from './components/icons/DocumentPlusIcon';
+import { ApiKeyForm } from './components/ApiKeyForm';
 import type { LessonPlanInput, GeneratedLessonPlan } from './types';
 import { generateLessonPlanStream } from './services/geminiService';
 
@@ -16,6 +16,7 @@ const fileToBase64 = (file: File): Promise<string> =>
   });
 
 const App: React.FC = () => {
+  const [apiKey, setApiKey] = useState<string>('');
   const [formData, setFormData] = useState<LessonPlanInput>({
     teacherName: 'Nguyễn Văn A',
     subject: '',
@@ -31,10 +32,27 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const savedApiKey = localStorage.getItem('gemini-api-key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+  }, []);
+
+  useEffect(() => {
     return () => {
       imagePreviews.forEach(url => URL.revokeObjectURL(url));
     };
   }, [imagePreviews]);
+
+  const handleApiKeySave = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem('gemini-api-key', key);
+  };
+  
+  const handleApiKeyClear = () => {
+    setApiKey('');
+    localStorage.removeItem('gemini-api-key');
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -60,6 +78,11 @@ const App: React.FC = () => {
       setError('Vui lòng tải lên ít nhất một hình ảnh sách giáo khoa.');
       return;
     }
+    if (!apiKey) {
+      setError('Vui lòng cung cấp API Key hợp lệ.');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setGeneratedPlan(null); 
@@ -77,7 +100,7 @@ const App: React.FC = () => {
         })
       );
       
-      const stream = await generateLessonPlanStream(formData, imageParts);
+      const stream = await generateLessonPlanStream(formData, imageParts, apiKey);
       let fullResponseText = '';
 
       for await (const chunk of stream) {
@@ -85,9 +108,19 @@ const App: React.FC = () => {
       }
       
       try {
-        // Clean up potential markdown code fences that the model might add
-        const cleanedJsonString = fullResponseText.replace(/^```json\s*|```$/g, '').trim();
-        const finalPlan: GeneratedLessonPlan = JSON.parse(cleanedJsonString);
+        // Clean up potential markdown code fences and other text outside the main JSON object.
+        let jsonString = fullResponseText;
+        const jsonStartIndex = jsonString.indexOf('{');
+        const jsonEndIndex = jsonString.lastIndexOf('}');
+
+        if (jsonStartIndex !== -1 && jsonEndIndex > jsonStartIndex) {
+            jsonString = jsonString.substring(jsonStartIndex, jsonEndIndex + 1);
+        } else {
+            // If no JSON object is found, throw an error.
+            throw new Error("Không tìm thấy đối tượng JSON hợp lệ trong phản hồi từ AI.");
+        }
+        
+        const finalPlan: GeneratedLessonPlan = JSON.parse(jsonString);
         
         // Update form data with AI-generated fields if they were not provided by the user
         setFormData(prev => ({
@@ -107,15 +140,33 @@ const App: React.FC = () => {
 
     } catch (err) {
       console.error(err);
-      setError('Đã xảy ra lỗi khi tạo giáo án. Vui lòng thử lại.');
+      const errorMessage = (err instanceof Error) ? err.message : 'Đã xảy ra lỗi không xác định.';
+      setError(errorMessage);
       setGeneratedPlan(null); 
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (!apiKey) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <ApiKeyForm onSave={handleApiKeySave} />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-slate-900 relative">
+      <div className="absolute top-4 right-4 z-10">
+        <button
+          onClick={handleApiKeyClear}
+          className="bg-slate-700/50 text-xs text-slate-300 hover:bg-red-500/50 hover:text-white px-3 py-1.5 rounded-md transition-colors duration-200 shadow-md"
+          title="Xóa API Key hiện tại và nhập key mới"
+        >
+          Đổi API Key
+        </button>
+      </div>
       <main className="container mx-auto px-4 py-8 md:py-12">
         <header className="text-center mb-12">
           <div className="inline-block bg-slate-800 text-indigo-400 p-3 rounded-xl mb-4 ring-1 ring-white/10">
@@ -153,8 +204,9 @@ const App: React.FC = () => {
                 </div>
               )}
               {error && (
-                <div className="flex items-center justify-center h-full text-red-300 bg-red-900/50 p-4 rounded-lg border border-red-500/30">
-                  <p>{error}</p>
+                <div className="flex flex-col items-center justify-center h-full text-red-300 bg-red-900/50 p-4 rounded-lg border border-red-500/30">
+                  <p className="font-semibold mb-2">Đã xảy ra lỗi</p>
+                  <p className="text-sm text-center">{error}</p>
                 </div>
               )}
               {!isLoading && !error && !generatedPlan && (

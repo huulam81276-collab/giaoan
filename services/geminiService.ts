@@ -1,14 +1,17 @@
-
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import type { LessonPlanInput } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
 export async function generateLessonPlanStream(
   input: LessonPlanInput,
-  imageParts: { inlineData: { mimeType: string; data: string } }[]
+  imageParts: { inlineData: { mimeType: string; data: string } }[],
+  apiKey: string
 ): Promise<AsyncGenerator<GenerateContentResponse>> {
   
+  if (!apiKey) {
+    throw new Error("API key is missing.");
+  }
+  const ai = new GoogleGenAI({ apiKey });
+
   const lessonTitleInstruction = input.lessonTitle
     ? `Tên bài dạy đã được người dùng cung cấp là: "${input.lessonTitle}". Hãy sử dụng tên này.`
     : `**Xác định Tên Bài Dạy:** Dựa vào nội dung hình ảnh, hãy xác định chính xác tên bài dạy.`;
@@ -99,6 +102,8 @@ export async function generateLessonPlanStream(
     Bạn PHẢI trả về TOÀN BỘ giáo án dưới dạng MỘT đối tượng JSON DUY NHẤT, hợp lệ. KHÔNG được thêm bất kỳ văn bản nào khác trước hoặc sau đối tượng JSON này.
     Toàn bộ output của bạn phải là một chuỗi JSON có thể parse được, không có markdown fences như \`\`\`json.
 
+    **LƯU Ý CỰC KỲ QUAN TRỌC VỀ KÝ TỰ:** Bên trong các giá trị chuỗi (string values) của JSON, nếu bạn cần sử dụng dấu ngoặc kép ("), bạn BẮT BUỘC phải escape nó bằng dấu gạch chéo ngược (\\"). Ví dụ: \`{"key": "GV nói: \\"Chào các em.\\""}\`. Việc này là BẮT BUỘC để đảm bảo JSON hợp lệ.
+
     Cấu trúc JSON bắt buộc phải tuân theo mẫu sau:
     {
       "lessonTitle": "Tên bài học do AI xác định",
@@ -146,6 +151,9 @@ export async function generateLessonPlanStream(
 
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-    throw new Error("Failed to generate lesson plan from Gemini API.");
+    if (error instanceof Error && error.message.includes('API key not valid')) {
+       throw new Error("API key không hợp lệ. Vui lòng kiểm tra lại hoặc tạo key mới.");
+    }
+    throw new Error("Không thể tạo giáo án từ Gemini API. Vui lòng kiểm tra API key và thử lại.");
   }
 }

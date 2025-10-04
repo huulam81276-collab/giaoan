@@ -1,4 +1,3 @@
-
 export interface DurationInput {
   level: 'TieuHoc' | 'THCS';
   periods: string;

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { LessonPlanInput } from '../types';
 import { LoadingSpinner } from './icons/LoadingSpinner';
