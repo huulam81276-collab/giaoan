@@ -4,11 +4,10 @@ import type { LessonPlanInput } from '../types';
 
 export async function generateLessonPlanStream(
   input: LessonPlanInput,
-  imageParts: { inlineData: { mimeType: string; data: string } }[]
+  imageParts: { inlineData: { mimeType: string; data: string } }[],
+  apiKey: string
 ): Promise<AsyncGenerator<GenerateContentResponse>> {
   
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
   const lessonTitleInstruction = input.lessonTitle
     ? `Tên bài dạy đã được người dùng cung cấp là: "${input.lessonTitle}". Hãy sử dụng tên này.`
     : `**Xác định Tên Bài Dạy:** Dựa vào nội dung hình ảnh, hãy xác định chính xác tên bài dạy.`;
@@ -188,6 +187,8 @@ export async function generateLessonPlanStream(
   const contents = { parts: [textPart, ...imageParts] };
 
   try {
+    const ai = new GoogleGenAI({ apiKey: apiKey });
+
     const responseStream = await ai.models.generateContentStream({
         model: "gemini-2.5-flash",
         contents: contents,
@@ -201,8 +202,11 @@ export async function generateLessonPlanStream(
 
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-    if (error instanceof Error && error.message.includes('API key not valid')) {
-       throw new Error("API key được cung cấp không hợp lệ.");
+    if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        if (message.includes('api key') || message.includes('invalid') || message.includes('not valid') || message.includes('not set')) {
+           throw new Error("[API_KEY_ERROR] Mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại và nhập một mật khẩu mới.");
+        }
     }
     throw new Error("Không thể tạo giáo án từ Gemini API. Đã có lỗi xảy ra, vui lòng thử lại.");
   }

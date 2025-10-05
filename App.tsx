@@ -1,10 +1,10 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { LessonPlanForm } from './components/LessonPlanForm';
 import { LessonPlanDisplay } from './components/LessonPlanDisplay';
 import { LoadingSpinner } from './components/icons/LoadingSpinner';
 import { DocumentPlusIcon } from './components/icons/DocumentPlusIcon';
+import { ApiKeyForm } from './components/ApiKeyForm';
 import type { LessonPlanInput, GeneratedLessonPlan } from './types';
 import { generateLessonPlanStream } from './services/geminiService';
 
@@ -17,6 +17,8 @@ const fileToBase64 = (file: File): Promise<string> =>
   });
 
 const App: React.FC = () => {
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
   const [formData, setFormData] = useState<LessonPlanInput>({
     teacherName: 'Nguyễn Văn A',
     subject: '',
@@ -32,10 +34,28 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const savedKey = localStorage.getItem('google-ai-api-key');
+    if (savedKey) {
+      setApiKey(savedKey);
+    }
+  }, []);
+
+  useEffect(() => {
     return () => {
       imagePreviews.forEach(url => URL.revokeObjectURL(url));
     };
   }, [imagePreviews]);
+
+  const handleSaveApiKey = (key: string) => {
+    localStorage.setItem('google-ai-api-key', key);
+    setApiKey(key);
+    setApiKeyError(null); 
+  };
+
+  const handleChangeApiKey = () => {
+    localStorage.removeItem('google-ai-api-key');
+    setApiKey(null);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -57,6 +77,10 @@ const App: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!apiKey) {
+      setError('Mật khẩu chưa được thiết lập. Vui lòng làm mới trang và nhập lại.');
+      return;
+    }
     if (selectedFiles.length === 0) {
       setError('Vui lòng tải lên ít nhất một hình ảnh sách giáo khoa.');
       return;
@@ -79,7 +103,7 @@ const App: React.FC = () => {
         })
       );
       
-      const stream = await generateLessonPlanStream(formData, imageParts);
+      const stream = await generateLessonPlanStream(formData, imageParts, apiKey);
       let fullResponseText = '';
 
       for await (const chunk of stream) {
@@ -113,12 +137,27 @@ const App: React.FC = () => {
     } catch (err) {
       console.error(err);
       const errorMessage = (err instanceof Error) ? err.message : 'Đã xảy ra lỗi không xác định.';
-      setError(errorMessage);
+      
+      if (errorMessage.startsWith('[API_KEY_ERROR]')) {
+        const userFriendlyError = errorMessage.replace('[API_KEY_ERROR] ', '');
+        setApiKeyError(userFriendlyError);
+        handleChangeApiKey();
+      } else {
+        setError(errorMessage);
+      }
       setGeneratedPlan(null); 
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!apiKey) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <ApiKeyForm onSave={handleSaveApiKey} initialError={apiKeyError || undefined} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 relative">
@@ -191,7 +230,15 @@ const App: React.FC = () => {
             <p className="mt-2">
                 Liên hệ đào tạo: <a href="tel:0972300864" className="text-indigo-400 hover:underline font-medium">0972.300.864 - Thầy Giới</a>
             </p>
-             <p className="mt-4 text-xs text-slate-500">
+            <div className="mt-4">
+              <button
+                onClick={handleChangeApiKey}
+                className="text-xs text-slate-500 hover:text-indigo-400 transition-colors"
+              >
+                Thay đổi Mật khẩu
+              </button>
+            </div>
+             <p className="mt-2 text-xs text-slate-500">
                 Ứng dụng được phát triển bởi Thầy Giới.
             </p>
         </footer>
