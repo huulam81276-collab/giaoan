@@ -4,14 +4,10 @@ import type { LessonPlanInput } from '../types';
 
 export async function generateLessonPlanStream(
   input: LessonPlanInput,
-  imageParts: { inlineData: { mimeType: string; data: string } }[],
-  apiKey: string
+  imageParts: { inlineData: { mimeType: string; data: string } }[]
 ): Promise<AsyncGenerator<GenerateContentResponse>> {
   
-  if (!apiKey) {
-    throw new Error("API key is missing.");
-  }
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const lessonTitleInstruction = input.lessonTitle
     ? `Tên bài dạy đã được người dùng cung cấp là: "${input.lessonTitle}". Hãy sử dụng tên này.`
@@ -206,8 +202,8 @@ export async function generateLessonPlanStream(
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     if (error instanceof Error && error.message.includes('API key not valid')) {
-       throw new Error("API key không hợp lệ. Vui lòng kiểm tra lại hoặc tạo key mới.");
+       throw new Error("API key được cung cấp không hợp lệ.");
     }
-    throw new Error("Không thể tạo giáo án từ Gemini API. Vui lòng kiểm tra API key và thử lại.");
+    throw new Error("Không thể tạo giáo án từ Gemini API. Đã có lỗi xảy ra, vui lòng thử lại.");
   }
 }

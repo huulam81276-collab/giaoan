@@ -1,10 +1,10 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { LessonPlanForm } from './components/LessonPlanForm';
 import { LessonPlanDisplay } from './components/LessonPlanDisplay';
 import { LoadingSpinner } from './components/icons/LoadingSpinner';
 import { DocumentPlusIcon } from './components/icons/DocumentPlusIcon';
-import { ApiKeyForm } from './components/ApiKeyForm';
 import type { LessonPlanInput, GeneratedLessonPlan } from './types';
 import { generateLessonPlanStream } from './services/geminiService';
 
@@ -17,7 +17,6 @@ const fileToBase64 = (file: File): Promise<string> =>
   });
 
 const App: React.FC = () => {
-  const [apiKey, setApiKey] = useState<string>('');
   const [formData, setFormData] = useState<LessonPlanInput>({
     teacherName: 'Nguyễn Văn A',
     subject: '',
@@ -33,27 +32,10 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('gemini-api-key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
-  }, []);
-
-  useEffect(() => {
     return () => {
       imagePreviews.forEach(url => URL.revokeObjectURL(url));
     };
   }, [imagePreviews]);
-
-  const handleApiKeySave = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem('gemini-api-key', key);
-  };
-  
-  const handleApiKeyClear = () => {
-    setApiKey('');
-    localStorage.removeItem('gemini-api-key');
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -79,10 +61,6 @@ const App: React.FC = () => {
       setError('Vui lòng tải lên ít nhất một hình ảnh sách giáo khoa.');
       return;
     }
-    if (!apiKey) {
-      setError('Vui lòng cung cấp API Key hợp lệ.');
-      return;
-    }
 
     setIsLoading(true);
     setError(null);
@@ -101,7 +79,7 @@ const App: React.FC = () => {
         })
       );
       
-      const stream = await generateLessonPlanStream(formData, imageParts, apiKey);
+      const stream = await generateLessonPlanStream(formData, imageParts);
       let fullResponseText = '';
 
       for await (const chunk of stream) {
@@ -109,8 +87,6 @@ const App: React.FC = () => {
       }
       
       try {
-        // Since we now request application/json, the response should be a clean JSON string.
-        // We just need to trim any potential leading/trailing whitespace.
         const jsonString = fullResponseText.trim();
 
         if (!jsonString) {
@@ -119,7 +95,6 @@ const App: React.FC = () => {
         
         const finalPlan: GeneratedLessonPlan = JSON.parse(jsonString);
         
-        // Update form data with AI-generated fields if they were not provided by the user
         setFormData(prev => ({
             ...prev,
             lessonTitle: finalPlan.lessonTitle || prev.lessonTitle,
@@ -145,25 +120,8 @@ const App: React.FC = () => {
     }
   };
 
-  if (!apiKey) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <ApiKeyForm onSave={handleApiKeySave} />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-900 relative">
-      <div className="absolute top-4 right-4 z-10">
-        <button
-          onClick={handleApiKeyClear}
-          className="bg-slate-700/50 text-xs text-slate-300 hover:bg-red-500/50 hover:text-white px-3 py-1.5 rounded-md transition-colors duration-200 shadow-md"
-          title="Xóa API Key hiện tại và nhập key mới"
-        >
-          Đổi API Key
-        </button>
-      </div>
       <main className="container mx-auto px-4 py-8 md:py-12">
         <header className="text-center mb-12">
           <div className="inline-block bg-slate-800 text-indigo-400 p-3 rounded-xl mb-4 ring-1 ring-white/10">
@@ -172,6 +130,11 @@ const App: React.FC = () => {
           <h1 className="text-4xl md:text-5xl font-bold text-slate-100 tracking-tight">
             SOẠN KẾ HOẠCH BÀI DẠY
           </h1>
+           <div className="mt-4">
+            <span className="inline-block bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white text-sm font-bold px-5 py-2 rounded-full shadow-lg transform hover:scale-105 transition-transform">
+              Bản miễn phí 7 ngày
+            </span>
+          </div>
           <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
             Tạo giáo án chuyên nghiệp theo Công văn 5512 và 2345 từ hình ảnh Sách giáo khoa.
           </p>
