@@ -12,6 +12,7 @@ interface LessonPlanFormProps {
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   imagePreviews: string[];
   onFileRemove: (index: number) => void;
+  isLimitReached: boolean;
 }
 
 export const LessonPlanForm: React.FC<LessonPlanFormProps> = ({
@@ -22,6 +23,7 @@ export const LessonPlanForm: React.FC<LessonPlanFormProps> = ({
   onFileChange,
   imagePreviews,
   onFileRemove,
+  isLimitReached,
 }) => {
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -100,8 +102,10 @@ export const LessonPlanForm: React.FC<LessonPlanFormProps> = ({
                     onChange={handleInputChange}
                     className={inputStyles}
                 >
-                    <option value="THCS">Cấp THCS (45 phút)</option>
+                    <option value="MamNon">Cấp Mầm Non (25-30 phút)</option>
                     <option value="TieuHoc">Cấp Tiểu học (35 phút)</option>
+                    <option value="THCS">Cấp THCS (45 phút)</option>
+                    <option value="THPT">Cấp THPT (45 phút)</option>
                 </select>
                 <input
                     type="number"
@@ -173,7 +177,7 @@ export const LessonPlanForm: React.FC<LessonPlanFormProps> = ({
               ))}
             </div>
              <label htmlFor="file-upload" className="relative mt-3 inline-flex items-center cursor-pointer rounded-md font-medium text-indigo-400 hover:text-indigo-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-slate-900 focus-within:ring-indigo-500">
-                <span>Thêm hoặc thay đổi ảnh...</span>
+                <span>Thêm ảnh...</span>
                 <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple accept="image/*" onChange={onFileChange} />
               </label>
           </div>
@@ -200,7 +204,7 @@ export const LessonPlanForm: React.FC<LessonPlanFormProps> = ({
       <div>
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isLimitReached}
           className="w-full flex justify-center items-center gap-2 px-4 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors"
         >
           {isLoading ? (
@@ -208,6 +212,8 @@ export const LessonPlanForm: React.FC<LessonPlanFormProps> = ({
               <LoadingSpinner className="w-5 h-5" />
               <span className="animate-pulse">Đang tạo...</span>
             </>
+          ) : isLimitReached ? (
+            'Đã hết lượt dùng thử'
           ) : (
             'Tạo Giáo án'
           )}

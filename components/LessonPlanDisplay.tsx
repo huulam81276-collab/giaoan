@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { marked } from 'marked';
-import type { GeneratedLessonPlan, LessonPlanInput, GeneratedLessonPlan5512, Activity2345 } from '../types';
+import type { GeneratedLessonPlan, LessonPlanInput, GeneratedLessonPlan5512, Activity2345, GiaoDucTichHop } from '../types';
 import { ClipboardIcon } from './icons/ClipboardIcon';
 import { CheckIcon } from './icons/CheckIcon';
 import { DownloadIcon } from './icons/DownloadIcon';
@@ -20,7 +20,7 @@ interface LessonPlanDisplayProps {
   isLoading: boolean;
 }
 
-const MarkdownRenderer: React.FC<{ content: string | undefined, className?: string }> = ({ content, className = '' }) => {
+const MarkdownRenderer: React.FC<{ content: string | undefined, className?: string }> = React.memo(({ content, className = '' }) => {
     if (!content) return null;
     return (
         <div className={className}>
@@ -33,7 +33,36 @@ const MarkdownRenderer: React.FC<{ content: string | undefined, className?: stri
             </ReactMarkdown>
         </div>
     );
-};
+});
+
+const IntegratedEducationSection: React.FC<{ data: GiaoDucTichHop | undefined }> = React.memo(({ data }) => {
+    if (!data) return null;
+
+    const topics = [
+        { label: 'Kỹ năng sống', value: data.kyNangSong },
+        { label: 'Quốc phòng – An ninh', value: data.quocPhongAnNinh },
+        { label: 'Bảo vệ môi trường', value: data.baoVeMoiTruong },
+        { label: 'Công dân số', value: data.congDanSo },
+    ];
+    
+    const renderedTopics = topics.filter(t => t.value);
+
+    if (renderedTopics.length === 0) return null;
+
+    return (
+        <div className="mt-4">
+            <p className="font-bold text-slate-200">Giáo dục tích hợp:</p>
+            <div className="space-y-1 mt-2 pl-4">
+                {renderedTopics.map(topic => (
+                    <div key={topic.label}>
+                        <strong>- {topic.label}:</strong> <MarkdownRenderer content={topic.value} />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+});
+
 
 // --- Start: CV 5512 specific components ---
 const getActivityTitle5512 = (key: string) => {
@@ -47,7 +76,7 @@ const getActivityTitle5512 = (key: string) => {
     }
 };
 
-const ActivitySection5512: React.FC<{ title: string; activity: GeneratedLessonPlan5512['tienTrinh'][string] }> = ({ title, activity }) => {
+const ActivitySection5512: React.FC<{ title: string; activity: GeneratedLessonPlan5512['tienTrinh'][string] }> = React.memo(({ title, activity }) => {
     if (!activity) return null;
     return (
         <div className="mt-6 break-inside-avoid">
@@ -81,10 +110,10 @@ const ActivitySection5512: React.FC<{ title: string; activity: GeneratedLessonPl
             </div>
         </div>
     );
-};
+});
 // --- End: CV 5512 specific components ---
 
-export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basicInfo, isLoading }) => {
+const LessonPlanDisplayComponent: React.FC<LessonPlanDisplayProps> = ({ plan, basicInfo, isLoading }) => {
     const [copied, setCopied] = useState(false);
     
     const displayDuration = plan.duration || (basicInfo.duration.periods ? `${basicInfo.duration.periods} tiết` : '(AI đề xuất)');
@@ -114,6 +143,19 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basi
         const lessonTitle = plan.lessonTitle || basicInfo.lessonTitle || '(Chưa có tên)';
         let sections: string[] = [];
 
+        const formatGiaoDucTichHop = (gdtg: GiaoDucTichHop | undefined) => {
+            if (!gdtg) return '';
+            const parts = [
+                gdtg.kyNangSong ? `- Kỹ năng sống: ${gdtg.kyNangSong}` : '',
+                gdtg.quocPhongAnNinh ? `- Quốc phòng – An ninh: ${gdtg.quocPhongAnNinh}` : '',
+                gdtg.baoVeMoiTruong ? `- Bảo vệ môi trường: ${gdtg.baoVeMoiTruong}` : '',
+                gdtg.congDanSo ? `- Công dân số: ${gdtg.congDanSo}` : '',
+            ].filter(Boolean);
+            
+            if (parts.length === 0) return '';
+            return 'Giáo dục tích hợp:\n' + parts.join('\n');
+        };
+
         if (plan.congVan === '2345') {
             const formatActivity = (activity: Activity2345) => 
                 `HOẠT ĐỘNG DẠY HỌC CHỦ YẾU:\n${activity.hoatDong || ''}\n\nYÊU CẦU CẦN ĐẠT:\n${activity.yeuCau || ''}\n\nĐIỀU CHỈNH:\n${activity.dieuChinh || ''}`;
@@ -124,8 +166,9 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basi
                 `Lớp: ${displayGrade}`,
                 `Tên bài dạy: ${lessonTitle}`,
                 `Thời gian thực hiện: ${displayDuration}\n`,
-                `I. YÊU CẦU CẦN ĐẠT\n${plan.yeuCauCanDat || ''}\n`,
-                `II. ĐỒ DÙNG DẠY HỌC\n${plan.doDungDayHoc || ''}\n`,
+                `I. YÊU CẦU CẦN ĐẠT\n${plan.yeuCauCanDat || ''}`,
+                formatGiaoDucTichHop(plan.giaoDucTichHop),
+                `\nII. ĐỒ DÙNG DẠY HỌC\n${plan.doDungDayHoc || ''}\n`,
                 `III. CÁC HOẠT ĐỘNG DẠY HỌC\n` + plan.hoatDongDayHoc.map(formatActivity).join('\n\n---\n\n'),
                 plan.dieuChinhSauBaiDay ? `\nIV. ĐIỀU CHỈNH SAU BÀI DẠY\n${plan.dieuChinhSauBaiDay}` : ''
             ];
@@ -153,14 +196,15 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basi
                 `I. MỤC TIÊU`,
                 `1. Về kiến thức: ${plan.mucTieu?.kienThuc || ''}`,
                 `2. Về năng lực: ${plan.mucTieu?.nangLuc || ''}`,
-                `3. Về phẩm chất: ${plan.mucTieu?.phamChat || ''}\n`,
-                `II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU`,
+                `3. Về phẩm chất: ${plan.mucTieu?.phamChat || ''}`,
+                formatGiaoDucTichHop(plan.giaoDucTichHop),
+                `\nII. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU`,
                 `${plan.thietBi || ''}\n`,
                 `III. TIẾN TRÌNH DẠY HỌC`,
                 activityText,
             ];
         }
-        return sections.join('\n');
+        return sections.filter(Boolean).join('\n');
     }, [plan, basicInfo, displayDuration, displaySubject, displayGrade]);
 
 
@@ -189,6 +233,20 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basi
         
         const lessonTitle = plan.lessonTitle || basicInfo.lessonTitle || 'Untitled';
         let mainContent = '';
+        
+        const formatGiaoDucTichHopHtml = (gdtg: GiaoDucTichHop | undefined) => {
+            if (!gdtg) return '';
+            const parts = [
+                gdtg.kyNangSong ? `<li><strong>Kỹ năng sống:</strong> ${mdToHtml(gdtg.kyNangSong)}</li>` : '',
+                gdtg.quocPhongAnNinh ? `<li><strong>Quốc phòng – An ninh:</strong> ${mdToHtml(gdtg.quocPhongAnNinh)}</li>` : '',
+                gdtg.baoVeMoiTruong ? `<li><strong>Bảo vệ môi trường:</strong> ${mdToHtml(gdtg.baoVeMoiTruong)}</li>` : '',
+                gdtg.congDanSo ? `<li><strong>Công dân số:</strong> ${mdToHtml(gdtg.congDanSo)}</li>` : '',
+            ].filter(Boolean);
+
+            if (parts.length === 0) return '';
+            return `<p><strong>Giáo dục tích hợp:</strong></p><ul>${parts.join('')}</ul>`;
+        };
+
 
         if (plan.congVan === '2345') {
              const activitiesHtml = plan.hoatDongDayHoc.map(act => `
@@ -202,6 +260,7 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basi
             mainContent = `
                 <h3>I. YÊU CẦU CẦN ĐẠT</h3>
                 <div>${mdToHtml(plan.yeuCauCanDat)}</div>
+                ${formatGiaoDucTichHopHtml(plan.giaoDucTichHop)}
                 <h3>II. ĐỒ DÙNG DẠY HỌC</h3>
                 <div>${mdToHtml(plan.doDungDayHoc)}</div>
                 <h3>III. CÁC HOẠT ĐỘNG DẠY HỌC</h3>
@@ -232,6 +291,7 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basi
                 <div><strong>1. Về kiến thức:</strong> ${mdToHtml(plan.mucTieu?.kienThuc)}</div>
                 <div><strong>2. Về năng lực:</strong> ${mdToHtml(plan.mucTieu?.nangLuc)}</div>
                 <div><strong>3. Về phẩm chất:</strong> ${mdToHtml(plan.mucTieu?.phamChat)}</div>
+                ${formatGiaoDucTichHopHtml(plan.giaoDucTichHop)}
                 <h3>II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU</h3>
                 <div>${mdToHtml(plan.thietBi)}</div>
                 <h3>III. TIẾN TRÌNH DẠY HỌC</h3>
@@ -284,6 +344,7 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basi
                 <div className="space-y-4 text-sm leading-relaxed text-slate-300">
                     <h3 className="text-xl font-bold text-slate-100 mt-6 border-b border-slate-700 pb-2">I. YÊU CẦU CẦN ĐẠT</h3>
                     <MarkdownRenderer content={plan.yeuCauCanDat} className="prose prose-sm prose-invert max-w-none" />
+                    <IntegratedEducationSection data={plan.giaoDucTichHop} />
                     
                     <h3 className="text-xl font-bold text-slate-100 mt-6 border-b border-slate-700 pb-2">II. ĐỒ DÙNG DẠY HỌC</h3>
                     <MarkdownRenderer content={plan.doDungDayHoc} className="prose prose-sm prose-invert max-w-none" />
@@ -321,6 +382,7 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basi
                         <div><strong>1. Về kiến thức:</strong> <MarkdownRenderer content={plan.mucTieu.kienThuc} /></div>
                         <div><strong>2. Về năng lực:</strong> <MarkdownRenderer content={plan.mucTieu.nangLuc} /></div>
                         <div><strong>3. Về phẩm chất:</strong> <MarkdownRenderer content={plan.mucTieu.phamChat} /></div>
+                        <IntegratedEducationSection data={plan.giaoDucTichHop} />
                     </>}
                     
                     {plan.thietBi && <>
@@ -343,3 +405,5 @@ export const LessonPlanDisplay: React.FC<LessonPlanDisplayProps> = ({ plan, basi
         </article>
     );
 };
+
+export const LessonPlanDisplay = React.memo(LessonPlanDisplayComponent);

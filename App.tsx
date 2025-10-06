@@ -1,12 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { LessonPlanForm } from './components/LessonPlanForm';
 import { LessonPlanDisplay } from './components/LessonPlanDisplay';
 import { LoadingSpinner } from './components/icons/LoadingSpinner';
 import { DocumentPlusIcon } from './components/icons/DocumentPlusIcon';
-import { ApiKeyForm } from './components/ApiKeyForm';
 import type { LessonPlanInput, GeneratedLessonPlan } from './types';
 import { generateLessonPlanStream } from './services/geminiService';
+import { ApiKeyForm } from './components/ApiKeyForm';
+import { generateFingerprint } from './utils/fingerprint';
+
+const USAGE_LIMIT = 10; // Giới hạn 10 lượt dùng
+const TRIAL_PERIOD_DAYS = 7; // Giới hạn 7 ngày
 
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -19,6 +24,13 @@ const fileToBase64 = (file: File): Promise<string> =>
 const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+  
+  const fingerprintRef = useRef<string | null>(null);
+  const [usageCount, setUsageCount] = useState(0);
+  const [isLimitReached, setIsLimitReached] = useState(false);
+  const [limitMessage, setLimitMessage] = useState<string | null>(null);
+
+
   const [formData, setFormData] = useState<LessonPlanInput>({
     teacherName: 'Nguyễn Văn A',
     subject: '',
@@ -34,10 +46,38 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedKey = localStorage.getItem('google-ai-api-key');
+    const savedKey = localStorage.getItem('gemini-api-key');
     if (savedKey) {
       setApiKey(savedKey);
     }
+    
+    // Check usage limit
+    const fp = generateFingerprint();
+    fingerprintRef.current = fp;
+    const usageDataString = localStorage.getItem(`usage_${fp}`);
+    if (usageDataString) {
+      try {
+        const usageData = JSON.parse(usageDataString);
+        const count = usageData.count || 0;
+        const firstUseDate = new Date(usageData.firstUseDate);
+        const now = new Date();
+        const daysSinceFirstUse = (now.getTime() - firstUseDate.getTime()) / (1000 * 3600 * 24);
+
+        setUsageCount(count);
+
+        if (count >= USAGE_LIMIT) {
+          setIsLimitReached(true);
+          setLimitMessage(`Bạn đã sử dụng hết ${USAGE_LIMIT} lượt tạo giáo án miễn phí.`);
+        } else if (daysSinceFirstUse > TRIAL_PERIOD_DAYS) {
+          setIsLimitReached(true);
+          setLimitMessage('Bạn đã hết hạn 7 ngày dùng thử miễn phí.');
+        }
+      } catch (e) {
+        console.error("Error parsing usage data", e);
+        localStorage.removeItem(`usage_${fp}`);
+      }
+    }
+
   }, []);
 
   useEffect(() => {
@@ -46,26 +86,15 @@ const App: React.FC = () => {
     };
   }, [imagePreviews]);
 
-  const handleSaveApiKey = (key: string) => {
-    localStorage.setItem('google-ai-api-key', key);
-    setApiKey(key);
-    setApiKeyError(null); 
-  };
-
-  const handleChangeApiKey = () => {
-    localStorage.removeItem('google-ai-api-key');
-    setApiKey(null);
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const files: File[] = Array.from(e.target.files);
-      setSelectedFiles(files);
+      const newFiles = [...e.target.files];
+      setSelectedFiles(prevFiles => [...prevFiles, ...newFiles]);
       
-      imagePreviews.forEach(url => URL.revokeObjectURL(url));
+      const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+      setImagePreviews(prevPreviews => [...prevPreviews, ...newPreviews]);
       
-      const newPreviews = files.map(file => URL.createObjectURL(file));
-      setImagePreviews(newPreviews);
+      e.target.value = '';
     }
   };
   
@@ -77,8 +106,12 @@ const App: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLimitReached) {
+        setError('Bạn đã hết lượt dùng thử miễn phí.');
+        return;
+    }
     if (!apiKey) {
-      setError('Mật khẩu chưa được thiết lập. Vui lòng làm mới trang và nhập lại.');
+      setError('Mật khẩu (API Key) không hợp lệ.');
       return;
     }
     if (selectedFiles.length === 0) {
@@ -127,6 +160,24 @@ const App: React.FC = () => {
         }));
         
         setGeneratedPlan(finalPlan);
+        
+        // Update usage count on success
+        if (fingerprintRef.current) {
+            const fp = fingerprintRef.current;
+            const usageDataString = localStorage.getItem(`usage_${fp}`);
+            let usageData = { count: 0, firstUseDate: new Date().toISOString() };
+            if (usageDataString) {
+                usageData = JSON.parse(usageDataString);
+            }
+            usageData.count += 1;
+            localStorage.setItem(`usage_${fp}`, JSON.stringify(usageData));
+            setUsageCount(usageData.count);
+            if (usageData.count >= USAGE_LIMIT) {
+                setIsLimitReached(true);
+                setLimitMessage(`Bạn đã sử dụng hết ${USAGE_LIMIT} lượt tạo giáo án miễn phí.`);
+            }
+        }
+
       } catch (parseErr) {
           console.error("Failed to parse the final JSON response:", parseErr);
           console.error("Raw response from API:", fullResponseText);
@@ -138,17 +189,24 @@ const App: React.FC = () => {
       console.error(err);
       const errorMessage = (err instanceof Error) ? err.message : 'Đã xảy ra lỗi không xác định.';
       
-      if (errorMessage.startsWith('[API_KEY_ERROR]')) {
-        const userFriendlyError = errorMessage.replace('[API_KEY_ERROR] ', '');
-        setApiKeyError(userFriendlyError);
-        handleChangeApiKey();
+      if (err instanceof Error && /API key not valid/i.test(err.message)) {
+          setError('Mật khẩu không hợp lệ. Vui lòng thử lại.');
+          localStorage.removeItem('gemini-api-key');
+          setApiKey(null);
+          setApiKeyError('Mật khẩu của bạn không hợp lệ hoặc đã hết hạn.');
       } else {
-        setError(errorMessage);
+          setError(errorMessage);
       }
       setGeneratedPlan(null); 
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSaveApiKey = (key: string) => {
+    localStorage.setItem('gemini-api-key', key);
+    setApiKey(key);
+    setApiKeyError(null);
   };
 
   if (!apiKey) {
@@ -171,7 +229,7 @@ const App: React.FC = () => {
           </h1>
            <div className="mt-4">
             <span className="inline-block bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white text-sm font-bold px-5 py-2 rounded-full shadow-lg transform hover:scale-105 transition-transform">
-              Bản miễn phí 7 ngày
+              Bản miễn phí ({usageCount}/{USAGE_LIMIT} lượt)
             </span>
           </div>
           <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
@@ -181,6 +239,13 @@ const App: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-12 items-start">
           <div className="lg:col-span-2 bg-slate-800/50 backdrop-blur-lg p-6 md:p-8 rounded-2xl shadow-lg ring-1 ring-white/10">
+            {isLimitReached && (
+                <div className="mb-6 p-4 bg-red-900/50 border border-red-500/30 text-red-300 rounded-lg text-center">
+                    <p className="font-bold">Đã hết lượt dùng thử</p>
+                    <p className="text-sm mt-1">{limitMessage}</p>
+                    <p className="text-sm mt-2">Vui lòng liên hệ Thầy Giới để tiếp tục sử dụng.</p>
+                </div>
+            )}
             <LessonPlanForm
               formData={formData}
               setFormData={setFormData}
@@ -189,6 +254,7 @@ const App: React.FC = () => {
               onFileChange={handleFileChange}
               imagePreviews={imagePreviews}
               onFileRemove={handleFileRemove}
+              isLimitReached={isLimitReached}
             />
           </div>
           
@@ -198,7 +264,7 @@ const App: React.FC = () => {
               {isLoading && (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 text-center">
                   <LoadingSpinner className="w-12 h-12 mb-4" />
-                  <p className="text-lg font-medium animate-pulse">AI đang soạn bài, vui lòng chờ...</p>
+                  <p className="text-lg font-medium animate-pulse">AI đang soạn bài, vui lòng chờ... ({usageCount + 1}/{USAGE_LIMIT})</p>
                   <p className="text-sm max-w-sm mx-auto mt-2">AI đang phân tích và soạn giáo án hoàn chỉnh. Quá trình này có thể mất một chút thời gian.</p>
                 </div>
               )}
@@ -230,14 +296,6 @@ const App: React.FC = () => {
             <p className="mt-2">
                 Liên hệ đào tạo: <a href="tel:0972300864" className="text-indigo-400 hover:underline font-medium">0972.300.864 - Thầy Giới</a>
             </p>
-            <div className="mt-4">
-              <button
-                onClick={handleChangeApiKey}
-                className="text-xs text-slate-500 hover:text-indigo-400 transition-colors"
-              >
-                Thay đổi Mật khẩu
-              </button>
-            </div>
              <p className="mt-2 text-xs text-slate-500">
                 Ứng dụng được phát triển bởi Thầy Giới.
             </p>

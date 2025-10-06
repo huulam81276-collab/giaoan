@@ -21,7 +21,22 @@ export async function generateLessonPlanStream(
     : `**Xác định Lớp:** Dựa vào nội dung hình ảnh, hãy xác định chính xác lớp (ví dụ: 1, 2, 3, 4, 5).`;
 
   const { level, periods } = input.duration;
-  const levelText = level === 'TieuHoc' ? 'Tiểu học (35 phút/tiết)' : 'THCS (45 phút/tiết)';
+  let levelText: string;
+    switch (level) {
+        case 'MamNon':
+            levelText = 'Mầm non (25-30 phút/tiết)';
+            break;
+        case 'TieuHoc':
+            levelText = 'Tiểu học (35 phút/tiết)';
+            break;
+        case 'THPT':
+            levelText = 'THPT (45 phút/tiết)';
+            break;
+        case 'THCS':
+        default:
+            levelText = 'THCS (45 phút/tiết)';
+            break;
+    }
   const finalDurationString = periods ? `${periods} tiết (Cấp ${levelText})` : '';
 
   const durationInstruction = finalDurationString
@@ -36,6 +51,15 @@ export async function generateLessonPlanStream(
     - Nhiệm vụ của bạn là **PHÂN TÍCH SÂU** khối lượng kiến thức và bài tập trong hình ảnh SGK được cung cấp để **TỰ ĐỀ XUẤT** thời lượng hợp lý nhất (ví dụ: "1 tiết (35 phút)", "2 tiết (70 phút)", v.v.).
     - Thời lượng bạn đề xuất sẽ là kim chỉ nam cho độ dài và chi tiết của toàn bộ giáo án bạn sắp tạo. Hãy đảm bảo nội dung bạn tạo ra sau đó phải tương xứng TUYỆT ĐỐI với thời lượng này.
     `;
+    
+    const integratedEducationInstruction = `
+      **YÊU CẦU MỚI TỪ NĂM HỌC 2024-2025: TÍCH HỢP NỘI DUNG GIÁO DỤC LIÊN MÔN**
+      Bạn BẮT BUỘC phải xác định và tích hợp các nội dung giáo dục liên môn sau đây vào bài dạy một cách hợp lý và tường minh. Nội dung tích hợp phải được thể hiện trong đối tượng JSON \`giaoDucTichHop\`.
+      - **kyNangSong**: Xác định các kỹ năng như giao tiếp, hợp tác, giải quyết vấn đề, quản lý cảm xúc có thể lồng ghép vào các hoạt động.
+      - **quocPhongAnNinh**: Liên hệ đến lòng yêu nước, ý thức bảo vệ Tổ quốc, kỷ luật, các sự kiện lịch sử, anh hùng dân tộc (nếu phù hợp với bài học).
+      - **baoVeMoiTruong**: Tích hợp các nội dung về tiết kiệm tài nguyên (nước, điện), bảo vệ không khí, trồng cây, phân loại rác...
+      - **congDanSo**: Hướng dẫn về cách sử dụng công nghệ an toàn, hiệu quả, có trách nhiệm, văn minh trên mạng, đánh giá nguồn tin (nếu bài học có liên quan đến công nghệ, internet).
+      Nếu một nội dung không thể tích hợp, hãy để trống chuỗi giá trị của nó trong JSON.`;
 
     let textPart;
 
@@ -48,6 +72,8 @@ export async function generateLessonPlanStream(
 
         ${durationInstruction}
         
+        ${integratedEducationInstruction}
+
         **Yêu cầu chi tiết về cấu trúc và nội dung:**
         1.  ${lessonTitleInstruction}
         2.  **Soạn thảo đầy đủ các mục:** I. YÊU CẦU CẦN ĐẠT, II. ĐỒ DÙNG DẠY HỌC, III. CÁC HOẠT ĐỘNG DẠY HỌC.
@@ -69,6 +95,12 @@ export async function generateLessonPlanStream(
           "grade": "Lớp do AI xác định",
           "duration": "Thời lượng do AI đề xuất hoặc được cung cấp",
           "yeuCauCanDat": "- Về năng lực: ...\\n- Về phẩm chất: ...",
+          "giaoDucTichHop": {
+            "kyNangSong": "Tích hợp rèn luyện kỹ năng làm việc nhóm qua hoạt động 2.",
+            "quocPhongAnNinh": "",
+            "baoVeMoiTruong": "Giáo dục ý thức giữ gìn vệ sinh lớp học.",
+            "congDanSo": ""
+          },
           "doDungDayHoc": "- Đối với GV: ...\\n- Đối với HS: ...",
           "hoatDongDayHoc": [
             {
@@ -103,6 +135,10 @@ export async function generateLessonPlanStream(
       **HÃY TỰ KIỂM TRA:** Trước khi xuất ra nội dung cho một hoạt động, hãy tự hỏi: "Với nội dung này, học sinh có đủ việc để làm trong [tổng thời gian / số hoạt động] phút không?". Nếu câu trả lời là không, HÃY BỔ SUNG NGAY LẬP TỨC.
 
       ---
+      
+      ${integratedEducationInstruction}
+
+      ---
 
       **YÊU CẦU BẮT BUỘC VỀ CẤU TRÚC: Soạn giáo án theo đúng cấu trúc của Công văn 5512.**
 
@@ -117,6 +153,19 @@ export async function generateLessonPlanStream(
       - **Nêu rõ các ký hiệu.** Ví dụ: "Ký hiệu góc vuông tại A, ký hiệu các đoạn thẳng bằng nhau."
       - **Mục tiêu:** Giáo viên đọc xong mô tả của bạn phải có thể vẽ lại hình một cách chính xác trên bảng mà không cần phải suy luận thêm. **ĐÂY LÀ YÊU CẦU BẮT BUỘC.**
 
+      ${ input.duration.level === 'MamNon' ? `
+      **Yêu cầu chi tiết về cấu trúc và nội dung cho cấp MẦM NON:**
+      1.  ${lessonTitleInstruction}
+      2.  **Soạn thảo đầy đủ các mục:** I. MỤC TIÊU (Gồm: Kiến thức, Kỹ năng, Thái độ), II. CHUẨN BỊ, III. TỔ CHỨC HOẠT ĐỘNG.
+      3.  **Mục III. TỔ CHỨC HOẠT ĐỘNG phải có 3 HOẠT ĐỘNG cốt lõi sau:**
+          - **Hoạt động 1: Ổn định tổ chức, gây hứng thú:** Bắt đầu bằng bài hát, câu đố, trò chuyện, trò chơi vận động nhẹ nhàng để thu hút sự chú ý và dẫn dắt trẻ vào chủ đề.
+          - **Hoạt động 2: Hoạt động trọng tâm (Nội dung chính):** Đây là phần chính, tập trung vào việc cung cấp kiến thức và rèn luyện kỹ năng cho trẻ thông qua các hoạt động trải nghiệm, khám phá. (Ví dụ: Cô cho trẻ quan sát tranh và kể chuyện; Cô hướng dẫn trẻ nặn/vẽ/xé dán; Cô và trẻ cùng chơi trò chơi học tập...). Phần này cần mô tả chi tiết lời nói, hành động của cô và dự kiến hành động của trẻ.
+          - **Hoạt động 3: Kết thúc:** Củng cố lại kiến thức đã học một cách nhẹ nhàng (ví dụ: nhận xét sản phẩm, cho trẻ hát/vận động lại theo bài hát của chủ đề), khen ngợi, động viên trẻ và chuyển sang hoạt động tiếp theo.
+      4.  Trong mỗi hoạt động, đặc biệt là hoạt động 2, cần mô tả rõ các bước tổ chức của GV (lời nói, hành động) và các hoạt động tương ứng của trẻ.
+      5.  Phần "d) Tổ chức thực hiện" trong JSON output phải trình bày dưới dạng bảng 2 cột: **"Hoạt động của GV và HS"** và **"Sản phẩm dự kiến"**.
+          - Cột "Sản phẩm dự kiến": Có thể là tranh vẽ, sản phẩm nặn của trẻ, khả năng trẻ kể lại một đoạn truyện ngắn, hát đúng và vận động theo nhạc...
+      6.  **JSON output:** Vẫn giữ nguyên cấu trúc JSON của CV5512, nhưng hãy ánh xạ 3 hoạt động trên vào "hoatDong1", "hoatDong2", "hoatDong3" và có thể bỏ qua "hoatDong4" hoặc điền nội dung củng cố, dặn dò. Các mục "kienThuc", "nangLuc", "phamChat" trong JSON có thể được ánh xạ từ Mục tiêu (Kiến thức, Kỹ năng, Thái độ). Mục "thietBi" trong JSON sẽ là mục "CHUẨN BỊ".
+      ` : `
       **Yêu cầu chi tiết về cấu trúc và nội dung:**
       1.  ${lessonTitleInstruction}
       2.  **Soạn thảo đầy đủ các mục:** I. MỤC TIÊU, II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU, III. TIẾN TRÌNH DẠY HỌC.
@@ -133,11 +182,11 @@ export async function generateLessonPlanStream(
               - **Ví dụ xấu (KHÔNG DÙNG):** "- Học sinh hiểu bài.", "- Học sinh trả lời câu hỏi.", "- Sản phẩm của học sinh."
               - **QUAN TRỌNG:** Nội dung cột này phải tương ứng trực tiếp với các nhiệm vụ được giao ở cột "Hoạt động của GV và HS". Mỗi nhiệm vụ phải có một sản phẩm đầu ra tương ứng.
       6.  **Định dạng:** Sử dụng Markdown cho văn bản và cú pháp LaTeX cho công thức toán học (ví dụ: $\\frac{a}{b}$, $x^2$).
-
+      `}
       ---
       **YÊU CẦU CUỐI CÙNG & KIỂM TRA LẠI:**
       Trước khi kết thúc, hãy tự rà soát lại một lần cuối.
-      1.  **ĐÃ HOÀN THÀNH TẤT CẢ 4 HOẠT ĐỘNG CHƯA?** (Mở đầu, Hình thành kiến thức, Luyện tập, Vận dụng).
+      1.  **ĐÃ HOÀN THÀNH TẤT CẢ CÁC HOẠT ĐỘNG CHƯA?**
       2.  **NỘI DUNG CÓ ĐỦ SÂU VÀ CHI TIẾT** cho thời lượng đã đề xuất không?
       3.  **CÁC CỘT "SẢN PHẨM DỰ KIẾN"** đã được điền đầy đủ và cụ thể chưa?
       
@@ -161,6 +210,12 @@ export async function generateLessonPlanStream(
           "kienThuc": "Nội dung kiến thức...",
           "nangLuc": "Nội dung năng lực...",
           "phamChat": "Nội dung phẩm chất..."
+        },
+        "giaoDucTichHop": {
+            "kyNangSong": "Tích hợp rèn luyện kỹ năng thuyết trình qua hoạt động 4.",
+            "quocPhongAnNinh": "Liên hệ đến tinh thần yêu nước qua cuộc đời của anh hùng X.",
+            "baoVeMoiTruong": "",
+            "congDanSo": "Hướng dẫn học sinh tìm kiếm và đánh giá thông tin trên internet cho nhiệm vụ vận dụng."
         },
         "thietBi": "Nội dung thiết bị và học liệu...",
         "tienTrinh": {
@@ -187,26 +242,22 @@ export async function generateLessonPlanStream(
   const contents = { parts: [textPart, ...imageParts] };
 
   try {
-    const ai = new GoogleGenAI({ apiKey: apiKey });
+    const ai = new GoogleGenAI({ apiKey });
 
     const responseStream = await ai.models.generateContentStream({
         model: "gemini-2.5-flash",
         contents: contents,
         config: {
           responseMimeType: "application/json",
-          maxOutputTokens: 65536,
-          thinkingConfig: { thinkingBudget: 4096 },
+          maxOutputTokens: 8192,
         }
       });
     return responseStream;
 
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-    if (error instanceof Error) {
-        const message = error.message.toLowerCase();
-        if (message.includes('api key') || message.includes('invalid') || message.includes('not valid') || message.includes('not set')) {
-           throw new Error("[API_KEY_ERROR] Mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại và nhập một mật khẩu mới.");
-        }
+    if (error.toString().includes('API key not valid')) {
+       throw new Error("API key not valid. Please check your key.");
     }
     throw new Error("Không thể tạo giáo án từ Gemini API. Đã có lỗi xảy ra, vui lòng thử lại.");
   }

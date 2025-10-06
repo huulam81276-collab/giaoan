@@ -1,5 +1,12 @@
+export interface GiaoDucTichHop {
+  kyNangSong?: string;
+  quocPhongAnNinh?: string;
+  baoVeMoiTruong?: string;
+  congDanSo?: string;
+}
+
 export interface DurationInput {
-  level: 'TieuHoc' | 'THCS';
+  level: 'MamNon' | 'TieuHoc' | 'THCS' | 'THPT';
   periods: string;
 }
 
@@ -36,6 +43,7 @@ export interface GeneratedLessonPlan5512 {
     nangLuc?: string;
     phamChat?: string;
   };
+  giaoDucTichHop?: GiaoDucTichHop;
   thietBi?: string;
   tienTrinh?: {
     [key: string]: Activity5512;
@@ -56,6 +64,7 @@ export interface GeneratedLessonPlan2345 {
     grade?: string;
     duration?: string;
     yeuCauCanDat: string;
+    giaoDucTichHop?: GiaoDucTichHop;
     doDungDayHoc: string;
     hoatDongDayHoc: Activity2345[];
     dieuChinhSauBaiDay?: string;
